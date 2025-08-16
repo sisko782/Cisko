@@ -305,4 +305,67 @@ document.addEventListener("DOMContentLoaded", () => {
   if (page === "checkout") { renderCart(); handleCheckoutForm(); }
 
   updateCartBadge();
+});// ====== Utils (si pas déjà présentes) ======
+const € = (cents) => (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+const byId = (id) => document.getElementById(id);
+
+// --- Panier minimal (si tu n'as rien pour le badge)
+const CART_KEY = "cisko_cart_v1";
+function loadCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '{"items":[]}'); }catch{ return {items:[]} } }
+function totalQty(){ return loadCart().items.reduce((s,i)=>s+i.qty,0); }
+function updateCartBadge(){ const el = byId("nav-cart-qty"); if(el) el.textContent = String(totalQty()); const y = byId("year"); if(y) y.textContent = new Date().getFullYear(); }
+
+// ====== Rendu du catalogue ======
+function renderCatalog() {
+  const list = byId("product-list");
+  const input = byId("search");
+  if (!list) return;
+
+  const paint = () => {
+    const q = (input?.value || "").trim().toLowerCase();
+    const filtered = (window.PRODUCTS || []).filter(p =>
+      !q || p.name.toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q)
+    );
+
+    list.innerHTML = filtered.map(p => `
+      <article class="card" aria-label="${p.name}">
+        <a href="product.html?slug=${encodeURIComponent(p.slug)}">
+          <img src="${p.image}" alt="${p.name}" loading="lazy" width="640" height="640" />
+        </a>
+        <div class="card-body">
+          <a href="product.html?slug=${encodeURIComponent(p.slug)}" style="display:block;font-weight:600;margin-bottom:6px">
+            ${p.name}
+          </a>
+          <div class="row between">
+            <span class="price">${€(p.price)}</span>
+            <button class="btn" data-add="${p.slug}">Ajouter</button>
+          </div>
+        </div>
+      </article>
+    `).join("");
+
+    // Boutons "Ajouter" → panier localStorage simple
+    list.querySelectorAll("[data-add]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const slug = btn.getAttribute("data-add");
+        const p = (window.PRODUCTS || []).find(x => x.slug === slug);
+        if (!p) return;
+        const state = loadCart();
+        const idx = state.items.findIndex(i => i.slug === slug);
+        if (idx >= 0) state.items[idx].qty += 1;
+        else state.items.push({ slug: p.slug, name: p.name, price: p.price, image: p.image, qty: 1 });
+        localStorage.setItem(CART_KEY, JSON.stringify(state));
+        updateCartBadge();
+      });
+    });
+  };
+
+  input?.addEventListener("input", paint, { passive: true });
+  paint();
+}
+
+// ====== Boot catalogue (ne s'exécutera que sur catalog.html) ======
+document.addEventListener("DOMContentLoaded", () => {
+  updateCartBadge();
+  if (byId("product-list")) renderCatalog();
 });

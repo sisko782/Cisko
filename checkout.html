@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CISKO -- Panier & Paiement</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="checkout">
+  <header id="site-header"></header>
+
+  <main class="container pad grid-2">
+    <section>
+      <h1>Panier</h1>
+      <div id="cart" class="cart"></div>
+      <div class="row between pad-top">
+        <button id="clear-cart" class="btn">Vider le panier</button>
+        <strong id="cart-total" class="price"></strong>
+      </div>
+    </section>
+
+    <section>
+      <h2>Paiement & Livraison</h2>
+      <p class="muted small">Démo 100% statique : l’envoi de commande se fait par e-mail.
+        Tu pourras plus tard remplacer par Stripe ou un autre prestataire.</p>
+
+      <form id="checkout-form" class="form">
+        <label>Nom complet
+          <input required name="name" autocomplete="name" />
+        </label>
+        <label>E-mail
+          <input required type="email" name="email" autocomplete="email" />
+        </label>
+        <label>Adresse
+          <input required name="address" autocomplete="address-line1" />
+        </label>
+        <label>Ville
+          <input required name="city" autocomplete="address-level2" />
+        </label>
+        <label>Code postal
+          <input required name="zip" autocomplete="postal-code" />
+        </label>
+
+        <button class="btn primary" type="submit">Valider la commande</button>
+        <p class="small muted">En cliquant, un e-mail prérempli s’ouvrira avec le récapitulatif.</p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">© <span id="year"></span> CISKO</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

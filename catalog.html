@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CISKO -- Catalogue</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="catalog">
+  <header id="site-header"></header>
+
+  <main class="container pad">
+    <div class="row between center">
+      <h1 class="m0">Catalogue</h1>
+      <label class="search">
+        <input id="search" type="search" placeholder="Recherche produits…" aria-label="Recherche" />
+      </label>
+    </div>
+
+    <section id="product-list" class="grid pad-top" aria-live="polite"></section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">© <span id="year"></span> CISKO</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

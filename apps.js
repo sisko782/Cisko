@@ -369,3 +369,143 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCartBadge();
   if (byId("product-list")) renderCatalog();
 });
+// ---------- Panier (déjà défini en partie) ----------
+const CART_KEY = "cisko_cart_v1";
+function loadCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '{"items":[]}'); }catch{ return {items:[]} } }
+function saveCart(state){ localStorage.setItem(CART_KEY, JSON.stringify(state)); }
+function cartItems(){ return loadCart().items; }
+function totalQty(){ return cartItems().reduce((s,i)=>s+i.qty,0); }
+function totalPrice(){ return cartItems().reduce((s,i)=>s+i.qty*i.price,0); }
+function updateCartBadge(){
+  const el = document.getElementById("nav-cart-qty");
+  if (el) el.textContent = String(totalQty());
+  const y = document.getElementById("year"); if (y) y.textContent = new Date().getFullYear();
+}
+function addToCartBySlug(slug, qty=1){
+  const p = (window.PRODUCTS||[]).find(x=>x.slug===slug);
+  if(!p) return;
+  const state = loadCart();
+  const idx = state.items.findIndex(i=>i.slug===slug);
+  if(idx>=0) state.items[idx].qty += qty;
+  else state.items.push({ slug: p.slug, name: p.name, price: p.price, image: p.image, qty });
+  saveCart(state); updateCartBadge();
+}
+function setQty(slug, qty){
+  const state = loadCart();
+  const idx = state.items.findIndex(i=>i.slug===slug);
+  if(idx<0) return;
+  if(qty<=0) state.items.splice(idx,1); else state.items[idx].qty = qty;
+  saveCart(state); updateCartBadge();
+}
+function inc(slug){ const it = cartItems().find(i=>i.slug===slug); setQty(slug, (it?.qty||0)+1); }
+function dec(slug){ const it = cartItems().find(i=>i.slug===slug); setQty(slug, (it?.qty||0)-1); }
+function clearCart(){ saveCart({items:[]}); updateCartBadge(); }
+
+// ---------- Fiche produit ----------
+function renderProductDetail(){
+  const wrap = document.getElementById("product-detail");
+  if(!wrap) return;
+  const params = new URLSearchParams(location.search);
+  const slug = params.get("slug");
+  const p = (window.PRODUCTS||[]).find(x=>x.slug===slug);
+
+  if(!p){ wrap.innerHTML = `<p>Produit introuvable.</p>`; return; }
+
+  wrap.innerHTML = `
+    <div><img src="${p.image}" alt="${p.name}" /></div>
+    <div>
+      <h1 class="m0">${p.name}</h1>
+      <div style="font-size:22px;font-weight:700;margin:1rem 0">${€(p.price)}</div>
+      <p>${p.description || ""}</p>
+      <div class="row" style="margin-top:1rem">
+        <div class="qty" aria-label="Quantité">
+          <button id="minus">−</button><span id="qty">1</span><button id="plus">+</button>
+        </div>
+        <button class="btn primary" id="add">Ajouter au panier</button>
+      </div>
+    </div>
+  `;
+  let qty = 1;
+  const qtyEl = document.getElementById("qty");
+  document.getElementById("minus").addEventListener("click", ()=>{ qty=Math.max(1,qty-1); qtyEl.textContent=String(qty); });
+  document.getElementById("plus").addEventListener("click", ()=>{ qty=qty+1; qtyEl.textContent=String(qty); });
+  document.getElementById("add").addEventListener("click", ()=> addToCartBySlug(p.slug, qty));
+}
+
+// ---------- Panier + Checkout ----------
+function renderCart(){
+  const box = document.getElementById("cart");
+  if(!box) return;
+  const items = cartItems();
+  if(items.length===0){ box.innerHTML = `<p>Votre panier est vide.</p>`; }
+  else {
+    box.innerHTML = items.map(it=>`
+      <div class="row between">
+        <div class="row">
+          <img src="${it.image}" alt="${it.name}" />
+          <div>
+            <div style="font-weight:600">${it.name}</div>
+            <div class="muted small">${€(it.price)}</div>
+            <div class="row" style="margin-top:6px">
+              <div class="qty" aria-label="Quantité ${it.name}">
+                <button data-dec="${it.slug}">−</button>
+                <span>${it.qty}</span>
+                <button data-inc="${it.slug}">+</button>
+              </div>
+              <button class="btn" data-rem="${it.slug}">Retirer</button>
+            </div>
+          </div>
+        </div>
+        <strong>${€(it.price*it.qty)}</strong>
+      </div>
+    `).join("");
+  }
+  const totalEl = document.getElementById("cart-total");
+  if(totalEl) totalEl.textContent = "Total : " + €(totalPrice());
+
+  box.querySelectorAll("[data-inc]").forEach(b=>b.addEventListener("click",()=>{ inc(b.getAttribute("data-inc")); renderCart(); }));
+  box.querySelectorAll("[data-dec]").forEach(b=>b.addEventListener("click",()=>{ dec(b.getAttribute("data-dec")); renderCart(); }));
+  box.querySelectorAll("[data-rem]").forEach(b=>b.addEventListener("click",()=>{ setQty(b.getAttribute("data-rem"),0); renderCart(); }));
+  const clearBtn = document.getElementById("clear-cart");
+  if(clearBtn) clearBtn.onclick = ()=>{ clearCart(); renderCart(); };
+}
+
+function handleCheckoutForm(){
+  const form = document.getElementById("checkout-form");
+  if(!form) return;
+  form.addEventListener("submit", (e)=>{
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    const items = cartItems();
+    if(items.length===0){ alert("Votre panier est vide."); return; }
+
+    const summary = [
+      `Commande CISKO`,
+      ``,
+      `Client: ${data.name}`,
+      `Email: ${data.email}`,
+      `Adresse: ${data.address}, ${data.zip} ${data.city}`,
+      ``,
+      `Articles:`,
+      ...items.map(i=>`- ${i.name} x${i.qty} = ${€(i.price*i.qty)}`),
+      ``,
+      `Total: ${€(totalPrice())}`,
+      ``,
+      `---`,
+      `Message généré automatiquement par le site CISKO`
+    ].join("\n");
+
+    const ORDER_EMAIL = "ahmed151199@hotmail.fr"; // ← REMPLACE par ton email de réception
+    const subject = encodeURIComponent("Commande CISKO");
+    const body = encodeURIComponent(summary);
+    location.href = `mailto:${ORDER_EMAIL}?subject=${subject}&body=${body}`;
+  });
+}
+
+// ---------- Boot commun ----------
+document.addEventListener("DOMContentLoaded", ()=>{
+  updateCartBadge();
+  if (document.getElementById("product-list")) { /* catalog.html */ }
+  if (document.getElementById("product-detail")) renderProductDetail();
+  if (document.getElementById("cart")) { renderCart(); handleCheckoutForm(); }
+});
